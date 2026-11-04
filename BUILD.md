@@ -1,4 +1,4 @@
-# Build DEVOTION 1.0.0
+# Build DEVOTION 1.1.0
 
 DEVOTION is a JUCE 8.0.12 / C++17 audio effect. By default CMake fetches the pinned JUCE release with Git; pass `-DJUCE_DIR=/absolute/path/to/JUCE` to use an existing checkout.
 

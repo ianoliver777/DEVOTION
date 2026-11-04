@@ -8,6 +8,7 @@ int main(int argc, char** argv)
         return 1;
     const juce::ScopedJuceInitialiser_GUI gui;
     std::unique_ptr<juce::AudioProcessor> processor(createPluginFilter());
+    processor->setCurrentProgram(1); // show a real preset so the arcs and pointers are visible
     std::unique_ptr<juce::AudioProcessorEditor> editor(processor->createEditorIfNeeded());
     if (editor == nullptr)
         return 2;

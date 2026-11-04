@@ -174,27 +174,9 @@ private:
     std::atomic<float>* match{};
 };
 
-Image loadLogo()
-{
-    auto original = ImageFileFormat::loadFrom(BinaryData::mark_png, BinaryData::mark_pngSize);
-    if (!original.isValid())
-        return {};
-    original = original.rescaled(320, roundToInt(320.0f * original.getHeight() / original.getWidth()));
-    Image logo(Image::ARGB, original.getWidth(), original.getHeight(), true);
-    for (int y = 0; y < logo.getHeight(); ++y)
-        for (int x = 0; x < logo.getWidth(); ++x)
-        {
-            const auto mask = original.getPixelAt(x, y).getBrightness();
-            const auto metal = Colour(0xfffff2f8).interpolatedWith(Colour(0xff7a5f74), 0.15f + 0.55f * y / logo.getHeight());
-            logo.setPixelAt(x, y, metal.withAlpha(jlimit(0.0f, 0.86f, (mask - 0.10f) * 0.96f)));
-        }
-    return logo;
-}
-
 class KnobLook final : public LookAndFeel_V4
 {
 public:
-    KnobLook() : logo(loadLogo()) {}
 
     void drawButtonText(Graphics& g, TextButton& button, bool, bool) override
     {
@@ -247,10 +229,13 @@ public:
             g.drawRoundedRectangle(bounds, radius, 1.2f);
             return;
         }
-        g.setColour(Colour(0xff140d14).brighter(down ? 0.25f : (over ? 0.12f : 0.0f)));
-        g.fillRoundedRectangle(bounds, jmin(radius, 12.0f));
-        g.setColour(Colour(0x66f0d8e8));
-        g.drawRoundedRectangle(bounds, jmin(radius, 12.0f), 1.2f);
+        const auto text = button.getButtonText();
+        const auto corner = text == "SAVE" ? 11.0f : radius;
+        g.setGradientFill(ColourGradient(Colour(0xff201820).brighter(down ? 0.25f : (over ? 0.12f : 0.0f)), 0, bounds.getY(),
+                                         Colour(0xff0b080b), 0, bounds.getBottom(), false));
+        g.fillRoundedRectangle(bounds, corner);
+        g.setColour(Colour(0xc8c9a3b6));
+        g.drawRoundedRectangle(bounds.reduced(0.5f), corner, 1.4f);
     }
 
     int getSliderThumbRadius(Slider& slider) override
@@ -300,59 +285,32 @@ public:
     void drawRotarySlider(Graphics& g, int x, int y, int w, int h, float position,
                           float start, float end, Slider& slider) override
     {
-        const auto scale = static_cast<float>(jmin(w, h)) / 390.0f;
+        // Bounds are 420 x 420 design units centred on the knob drawn in the artwork.
+        const auto scale = static_cast<float>(jmin(w, h)) / 420.0f;
         Graphics::ScopedSaveState save(g);
-        g.addTransform(AffineTransform::scale(scale).translated(x + (w - 390 * scale) * 0.5f,
-                                                                 y + (h - 390 * scale) * 0.5f));
+        g.addTransform(AffineTransform::scale(scale).translated(x + (w - 420 * scale) * 0.5f,
+                                                                 y + (h - 420 * scale) * 0.5f));
         const auto accent = slider.findColour(Slider::rotarySliderFillColourId);
-        const Point<float> c{195, 195};
-        const auto disc = [c](float r) { return Rectangle<float>(2 * r, 2 * r).withCentre(c); };
-        const auto fill = [&](float r, Colour top, Colour bottom) {
-            g.setGradientFill(ColourGradient(top, 131, 195 - r, bottom, 253, 195 + r, false));
-            g.fillEllipse(disc(r));
-        };
-        fill(190, Colour(0xff1d151c), Colour(0xff09070a));
-        g.setColour(accent.withAlpha(0.26f));
-        g.drawEllipse(disc(184), 2);
-        fill(173, Colour(0xff6b5966), Colour(0xff0b090b));
-        fill(162, Colour(0xff060407), Colour(0xff181117));
-        ColourGradient steel(Colour(0xffd8c4d2), 147, 50, Colour(0xff140f13), 259, 335, false);
-        steel.addColour(0.17, Colour(0xff5c4b58));
-        steel.addColour(0.45, Colour(0xff181117));
-        steel.addColour(0.72, Colour(0xff3e3140));
-        g.setGradientFill(steel);
-        g.fillEllipse(disc(147));
-        g.setColour(Colour(0xff937c8e));
-        g.drawEllipse(disc(147), 1.4f);
-        for (int r = 77; r < 145; r += 2)
-        {
-            g.setColour(Colours::white.withAlpha(0.018f + (r % 7) * 0.003f));
-            g.drawEllipse(disc(static_cast<float>(r)), 0.7f);
-        }
-        g.setColour(Colours::black.withAlpha(0.21f));
-        g.fillEllipse(disc(87));
-        g.setOpacity(1.0f);
-        if (logo.isValid())
-            g.drawImageWithin(logo, 95, 95, 200, 200, RectanglePlacement::centred);
+        const Point<float> c{210, 210};
         const auto angle = start + position * (end - start);
         if (position > 0.0f)
         {
             Path track;
-            track.addCentredArc(c.x, c.y, 176, 176, 0, start, angle, true);
-            g.setColour(accent.withAlpha(0.23f));
-            g.strokePath(track, PathStrokeType(17, PathStrokeType::curved, PathStrokeType::rounded));
+            track.addCentredArc(c.x, c.y, 192, 192, 0, start, angle, true);
+            g.setColour(accent.withAlpha(0.22f));
+            g.strokePath(track, PathStrokeType(13, PathStrokeType::curved, PathStrokeType::rounded));
             g.setColour(accent);
-            g.strokePath(track, PathStrokeType(5, PathStrokeType::curved, PathStrokeType::rounded));
+            g.strokePath(track, PathStrokeType(4, PathStrokeType::curved, PathStrokeType::rounded));
         }
-        const auto inner = c.getPointOnCircumference(130.0f, angle);
-        const auto outer = c.getPointOnCircumference(168.0f, angle);
-        g.setColour(accent.withAlpha(0.45f));
-        g.drawLine({inner, outer}, 15);
-        g.setColour(accent.interpolatedWith(Colours::white, 0.78f));
-        g.drawLine({inner, outer}, 6);
+        const auto inner = c.getPointOnCircumference(122.0f, angle);
+        const auto outer = c.getPointOnCircumference(166.0f, angle);
+        g.setColour(accent.withAlpha(0.5f));
+        g.drawLine({inner, outer}, 13);
+        g.setColour(accent);
+        g.drawLine({inner, outer}, 9);
+        g.setColour(Colours::white.withAlpha(0.95f));
+        g.drawLine({inner, outer}, 4.5f);
     }
-private:
-    Image logo;
 };
 
 class Editor final : public AudioProcessorEditor, private Timer
@@ -419,9 +377,9 @@ public:
         save.onClick = [this] { presetFile(true); };
         menu.onClick = [this] { showOptions(); };
         setResizable(true, true);
-        getConstrainer()->setFixedAspectRatio(1672.0 / 941.0);
-        setResizeLimits(760, 428, 1672, 941);
-        setSize(1003, 565);
+        getConstrainer()->setFixedAspectRatio(static_cast<double>(designWidth) / designHeight);
+        setResizeLimits(760, 430, 1667, 944);
+        setSize(1000, 566);
         updateDisplay();
         startTimerHz(30);
     }
@@ -440,14 +398,14 @@ public:
     void resized() override
     {
         for (size_t i = 0; i < knobs.size(); ++i)
-            knobs[i].setBounds(region(centres[i] - 195, 263, 390, 390));
-        prev.setBounds(region(1271, 98, 42, 45));
-        preset.setBounds(region(1313, 98, 159, 45));
-        next.setBounds(region(1472, 98, 42, 45));
-        save.setBounds(region(1532, 98, 45, 45));
-        menu.setBounds(region(1588, 98, 45, 45));
-        mixSlider.setBounds(region(1330, 156, 160, 44));
-        matchButton.setBounds(region(1548, 162, 78, 32));
+            knobs[i].setBounds(region(centres[i] - 210, knobY - 210, 420, 420));
+        prev.setBounds(region(1266, 102, 44, 44));
+        preset.setBounds(region(1311, 102, 155, 44));
+        next.setBounds(region(1466, 102, 44, 44));
+        save.setBounds(region(1527, 102, 46, 44));
+        menu.setBounds(region(1585, 102, 44, 44));
+        mixSlider.setBounds(region(1333, 158, 152, 43));
+        matchButton.setBounds(region(1544, 164, 79, 31));
     }
 
     void paint(Graphics& g) override
@@ -456,50 +414,54 @@ public:
         g.setImageResamplingQuality(Graphics::highResamplingQuality);
         if (artwork.isValid())
             g.drawImage(artwork, getLocalBounds().toFloat());
-        g.addTransform(AffineTransform::scale(getWidth() / 1672.0f, getHeight() / 941.0f));
+        g.addTransform(AffineTransform::scale(getWidth() / static_cast<float>(designWidth), getHeight() / static_cast<float>(designHeight)));
 
-        const Rectangle<float> mixPill(1271, 156, 362, 44);
-        g.setColour(Colour(0xd00c080b));
-        g.fillRoundedRectangle(mixPill, 22);
-        g.setColour(Colour(0x66f0d8e8));
-        g.drawRoundedRectangle(mixPill, 22, 1.2f);
+        const Rectangle<float> mixPill(1267, 158, 362, 43);
+        g.setColour(Colour(0xff0e0a0d));
+        g.fillRoundedRectangle(mixPill, 21.5f);
+        g.setColour(Colour(0xc8c9a3b6));
+        g.drawRoundedRectangle(mixPill.reduced(0.5f), 21.5f, 1.4f);
         g.setColour(Colour(0xfff7eef4));
-        g.setFont(FontOptions(16.0f).withKerningFactor(0.18f));
-        g.drawText("MIX", Rectangle<float>(1288, 156, 44, 44), Justification::centredLeft);
-        g.setFont(FontOptions(15.0f).withStyle("Bold"));
-        g.drawText(String(roundToInt(mixSlider.getValue())) + "%", Rectangle<float>(1490, 156, 52, 44),
+        g.setFont(FontOptions(15.0f).withKerningFactor(0.3f));
+        g.drawText("MIX", Rectangle<float>(1285, 158, 46, 43), Justification::centredLeft);
+        g.setFont(FontOptions(14.0f).withStyle("Bold"));
+        g.drawText(String(roundToInt(mixSlider.getValue())) + "%", Rectangle<float>(1488, 158, 54, 43),
                    Justification::centred);
 
-        meter(g, 53, in);
-        meter(g, 1544, out);
+        meter(g, 57, in);
+        meter(g, 1540, out);
         g.setFont(FontOptions(23.0f).withStyle("Bold"));
         for (size_t i = 0; i < knobs.size(); ++i)
         {
-            const Rectangle<float> badge(static_cast<float>(centres[i] - 42), 708, 84, 32);
-            g.setColour(Colour(0xec100a0e));
-            g.fillRoundedRectangle(badge, 7);
-            g.setColour(Colour(0xffd0aec4));
-            g.drawRoundedRectangle(badge, 7, 1);
+            const Rectangle<float> badge(static_cast<float>(badgeCentres[i] - 45), 707, 90, 36);
+            g.setColour(Colour(0xff0e0a0d));
+            g.fillRoundedRectangle(badge, 6);
+            g.setColour(Colour(0xd0c9a3b6));
+            g.drawRoundedRectangle(badge.reduced(0.5f), 6, 1.3f);
             g.setColour(Colour(0xfffcf2f8));
             g.drawText(String(roundToInt(knobs[i].getValue())) + "%", badge, Justification::centred);
         }
         const auto readout = [&](size_t knob, const String& label, float amount, Colour accent) {
             if (knobs[knob].getValue() <= 0.0)
                 return;
-            g.setFont(FontOptions(15.0f).withKerningFactor(0.12f));
-            g.setColour(amount > 0.05f ? accent.interpolatedWith(Colours::white, 0.35f) : Colour(0xa0f7eef4));
-            g.drawText(label + "  -" + String(amount, 1) + " dB",
-                       Rectangle<float>(static_cast<float>(centres[knob] - 100), 744, 200, 22), Justification::centred);
+            const Rectangle<float> pill(static_cast<float>(badgeCentres[knob] - 72), 748, 144, 22);
+            g.setColour(Colour(0xd80d090c));
+            g.fillRoundedRectangle(pill, 11);
+            g.setColour(accent.withAlpha(0.45f));
+            g.drawRoundedRectangle(pill.reduced(0.5f), 11, 1.0f);
+            g.setFont(FontOptions(14.0f).withKerningFactor(0.12f));
+            g.setColour(amount > 0.05f ? accent.interpolatedWith(Colours::white, 0.35f) : Colour(0xd0f7eef4));
+            g.drawText(label + "  -" + String(amount, 1) + " dB", pill, Justification::centred);
         };
         readout(1, "COMP", compressionAmount, accentPresence);
         readout(2, "DE-ESS", gainReduction, accentSilk);
         if (processor.getBypassParameter()->getValue() >= 0.5f)
         {
             g.setColour(Colour(0xff180e14));
-            g.fillRoundedRectangle(761, 228, 150, 34, 6);
+            g.fillRoundedRectangle(758, 780, 150, 30, 6);
             g.setColour(Colour(0xffffd0e6));
-            g.setFont(FontOptions(23.0f).withStyle("Bold"));
-            g.drawText("BYPASSED", 761, 228, 150, 34, Justification::centred);
+            g.setFont(FontOptions(19.0f).withStyle("Bold"));
+            g.drawText("BYPASSED", 758, 780, 150, 30, Justification::centred);
         }
     }
 
@@ -507,7 +469,7 @@ private:
     Rectangle<int> region(int x, int y, int w, int h) const
     {
         return Rectangle<float>(x, y, w, h).transformedBy(
-            AffineTransform::scale(getWidth() / 1672.0f, getHeight() / 941.0f)).toNearestInt();
+            AffineTransform::scale(getWidth() / static_cast<float>(designWidth), getHeight() / static_cast<float>(designHeight))).toNearestInt();
     }
 
     static void meter(Graphics& g, float x, float peak)
@@ -515,13 +477,13 @@ private:
         constexpr std::array db{-72, -60, -50, -42, -36, -33, -30, -27, -24, -22, -21, -20,
                                 -18, -17, -15, -14, -12, -11, -10, -8, -7, -6, -4, -3, -1, 0};
         g.setColour(Colour(0xff110b0f));
-        g.fillRoundedRectangle(x - 3, 280, 34, 355, 4);
+        g.fillRoundedRectangle(x - 3, 283, 33, 349, 4);
         const auto level = Decibels::gainToDecibels(peak, -100.0f);
         for (size_t i = 0; i < db.size(); ++i)
         {
-            const auto lit = Colour(0xfffff0f7).interpolatedWith(Colour(0xffe48ac0), i / 25.0f);
-            g.setColour(level >= db[i] ? (i == db.size() - 1 ? Colour(0xffff6b8f) : lit) : Colour(0xff2a1d27));
-            g.fillRoundedRectangle(x, 624.0f - 13.55f * i, 28, 8.5f, 1.5f);
+            const auto lit = Colour(0xffffe4f1).interpolatedWith(Colour(0xffe2589c), 1.0f - i / 25.0f);
+            g.setColour(level >= db[i] ? (i == db.size() - 1 ? Colour(0xffff6b8f) : lit) : Colour(0xff4a2237));
+            g.fillRoundedRectangle(x, 619.0f - 13.24f * static_cast<float>(i), 27, 8, 1.5f);
         }
     }
 
@@ -624,7 +586,9 @@ private:
     const Image artwork;
     KnobLook look;
     TooltipWindow tooltips{this, 700};
-    static constexpr std::array centres{397, 840, 1282};
+    static constexpr int designWidth = 1667, designHeight = 944, knobY = 458;
+    static constexpr std::array centres{396, 834, 1272};
+    static constexpr std::array badgeCentres{399, 837, 1277};
     std::array<Slider, 3> knobs;
     std::array<std::unique_ptr<AudioProcessorValueTreeState::SliderAttachment>, 3> attachments;
     Slider mixSlider;

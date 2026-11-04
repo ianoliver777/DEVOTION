@@ -1,4 +1,4 @@
-# DEVOTION 1.0.0
+# DEVOTION 1.1.0
 
 **THE TRINITYKNOBS COLLECTION**  
 By **TRIPLE SEVEN AUDIO**  
@@ -7,7 +7,7 @@ Vocal polish
 ## What's in the download
 
 ```
-DEVOTION-1.0.0/
+DEVOTION-1.1.0/
 ├── INSTALL.md            ← this guide
 ├── macOS/
 │   ├── VST3/DEVOTION.vst3
